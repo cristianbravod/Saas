@@ -1,0 +1,549 @@
+-- =====================================================
+-- BASE DE DATOS PARA APLICACIÓN DE RESTAURANTE
+-- PostgreSQL 12+
+-- =====================================================
+
+-- Eliminar base de datos si existe (opcional)
+-- DROP DATABASE IF EXISTS restaurante_db;
+
+-- Crear base de datos
+CREATE DATABASE restaurante_db
+    WITH 
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'es_ES.UTF-8'
+    LC_CTYPE = 'es_ES.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+-- Conectar a la base de datos
+\c restaurante_db;
+
+-- Crear extensiones útiles
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+-- =====================================================
+-- TABLA: categorias
+-- =====================================================
+CREATE TABLE categorias (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT,
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: productos (menú regular)
+-- =====================================================
+CREATE TABLE productos (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(200) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL CHECK (precio >= 0),
+    categoria_id INTEGER REFERENCES categorias(id) ON DELETE RESTRICT,
+    descripcion TEXT,
+    disponible BOOLEAN DEFAULT true,
+    imagen_url VARCHAR(500),
+    tiempo_preparacion INTEGER DEFAULT 0, -- en minutos
+    ingredientes TEXT[],
+    alergenos TEXT[],
+    calorias INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: platos_especiales
+-- =====================================================
+CREATE TABLE platos_especiales (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(200) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL CHECK (precio >= 0),
+    descripcion TEXT,
+    disponible BOOLEAN DEFAULT true,
+    fecha_inicio DATE DEFAULT CURRENT_DATE,
+    fecha_fin DATE,
+    imagen_url VARCHAR(500),
+    tiempo_preparacion INTEGER DEFAULT 0,
+    ingredientes TEXT[],
+    alergenos TEXT[],
+    calorias INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fecha_valida CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
+);
+
+-- =====================================================
+-- TABLA: mesas
+-- =====================================================
+CREATE TABLE mesas (
+    id SERIAL PRIMARY KEY,
+    numero VARCHAR(10) NOT NULL UNIQUE,
+    capacidad INTEGER NOT NULL CHECK (capacidad > 0),
+    ubicacion VARCHAR(100),
+    activa BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: pedidos
+-- =====================================================
+CREATE TABLE pedidos (
+    id SERIAL PRIMARY KEY,
+    mesa_id INTEGER REFERENCES mesas(id) ON DELETE RESTRICT,
+    numero_pedido VARCHAR(50) UNIQUE NOT NULL,
+    estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'preparando', 'listo', 'entregado', 'cancelado')),
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    descuento DECIMAL(10,2) DEFAULT 0,
+    impuestos DECIMAL(10,2) DEFAULT 0,
+    total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    observaciones TEXT,
+    fecha_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_entrega TIMESTAMP,
+    fecha_completado TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: detalle_pedidos
+-- =====================================================
+CREATE TABLE detalle_pedidos (
+    id SERIAL PRIMARY KEY,
+    pedido_id INTEGER REFERENCES pedidos(id) ON DELETE CASCADE,
+    producto_id INTEGER REFERENCES productos(id) ON DELETE RESTRICT,
+    plato_especial_id INTEGER REFERENCES platos_especiales(id) ON DELETE RESTRICT,
+    cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+    precio_unitario DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT producto_o_especial CHECK (
+        (producto_id IS NOT NULL AND plato_especial_id IS NULL) OR
+        (producto_id IS NULL AND plato_especial_id IS NOT NULL)
+    )
+);
+
+-- =====================================================
+-- TABLA: ventas (historial de pedidos completados)
+-- =====================================================
+CREATE TABLE ventas (
+    id SERIAL PRIMARY KEY,
+    pedido_id INTEGER REFERENCES pedidos(id) ON DELETE RESTRICT,
+    mesa_numero VARCHAR(10) NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    cantidad_items INTEGER NOT NULL,
+    metodo_pago VARCHAR(50) DEFAULT 'efectivo',
+    fecha_venta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mes INTEGER GENERATED ALWAYS AS (EXTRACT(MONTH FROM fecha_venta)) STORED,
+    año INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM fecha_venta)) STORED,
+    dia_semana INTEGER GENERATED ALWAYS AS (EXTRACT(DOW FROM fecha_venta)) STORED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: detalle_ventas
+-- =====================================================
+CREATE TABLE detalle_ventas (
+    id SERIAL PRIMARY KEY,
+    venta_id INTEGER REFERENCES ventas(id) ON DELETE CASCADE,
+    producto_nombre VARCHAR(200) NOT NULL,
+    categoria VARCHAR(100),
+    cantidad INTEGER NOT NULL,
+    precio_unitario DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    es_plato_especial BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: inventario (opcional para control de stock)
+-- =====================================================
+CREATE TABLE inventario (
+    id SERIAL PRIMARY KEY,
+    producto_id INTEGER REFERENCES productos(id) ON DELETE CASCADE,
+    stock_actual INTEGER NOT NULL DEFAULT 0,
+    stock_minimo INTEGER DEFAULT 0,
+    stock_maximo INTEGER DEFAULT 0,
+    unidad_medida VARCHAR(20) DEFAULT 'unidad',
+    costo_unitario DECIMAL(10,2),
+    proveedor VARCHAR(200),
+    fecha_ultima_compra DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLA: configuracion (ajustes de la aplicación)
+-- =====================================================
+CREATE TABLE configuracion (
+    id SERIAL PRIMARY KEY,
+    clave VARCHAR(100) NOT NULL UNIQUE,
+    valor TEXT NOT NULL,
+    descripcion TEXT,
+    tipo VARCHAR(20) DEFAULT 'string', -- string, number, boolean, json
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- ÍNDICES PARA OPTIMIZACIÓN
+-- =====================================================
+
+-- Índices para productos
+CREATE INDEX idx_productos_categoria ON productos(categoria_id);
+CREATE INDEX idx_productos_disponible ON productos(disponible);
+CREATE INDEX idx_productos_nombre ON productos USING gin(nombre gin_trgm_ops);
+
+-- Índices para platos especiales
+CREATE INDEX idx_platos_especiales_disponible ON platos_especiales(disponible);
+CREATE INDEX idx_platos_especiales_fechas ON platos_especiales(fecha_inicio, fecha_fin);
+
+-- Índices para pedidos
+CREATE INDEX idx_pedidos_mesa ON pedidos(mesa_id);
+CREATE INDEX idx_pedidos_estado ON pedidos(estado);
+CREATE INDEX idx_pedidos_fecha ON pedidos(fecha_pedido);
+CREATE INDEX idx_pedidos_numero ON pedidos(numero_pedido);
+
+-- Índices para detalle_pedidos
+CREATE INDEX idx_detalle_pedidos_pedido ON detalle_pedidos(pedido_id);
+CREATE INDEX idx_detalle_pedidos_producto ON detalle_pedidos(producto_id);
+CREATE INDEX idx_detalle_pedidos_especial ON detalle_pedidos(plato_especial_id);
+
+-- Índices para ventas
+CREATE INDEX idx_ventas_fecha ON ventas(fecha_venta);
+CREATE INDEX idx_ventas_mesa ON ventas(mesa_numero);
+CREATE INDEX idx_ventas_mes_año ON ventas(año, mes);
+CREATE INDEX idx_ventas_pedido ON ventas(pedido_id);
+
+-- Índices para detalle_ventas
+CREATE INDEX idx_detalle_ventas_venta ON detalle_ventas(venta_id);
+CREATE INDEX idx_detalle_ventas_producto ON detalle_ventas(producto_nombre);
+CREATE INDEX idx_detalle_ventas_categoria ON detalle_ventas(categoria);
+
+-- =====================================================
+-- TRIGGERS PARA UPDATED_AT
+-- =====================================================
+
+-- Función para actualizar updated_at
+CREATE OR REPLACE FUNCTION actualizar_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Aplicar trigger a las tablas necesarias
+CREATE TRIGGER trg_categorias_updated_at
+    BEFORE UPDATE ON categorias
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_productos_updated_at
+    BEFORE UPDATE ON productos
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_platos_especiales_updated_at
+    BEFORE UPDATE ON platos_especiales
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_mesas_updated_at
+    BEFORE UPDATE ON mesas
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_pedidos_updated_at
+    BEFORE UPDATE ON pedidos
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_inventario_updated_at
+    BEFORE UPDATE ON inventario
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+CREATE TRIGGER trg_configuracion_updated_at
+    BEFORE UPDATE ON configuracion
+    FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+
+-- =====================================================
+-- FUNCIONES ÚTILES
+-- =====================================================
+
+-- Función para generar número de pedido
+CREATE OR REPLACE FUNCTION generar_numero_pedido()
+RETURNS VARCHAR AS $$
+DECLARE
+    nuevo_numero VARCHAR;
+    fecha_actual DATE := CURRENT_DATE;
+    contador INTEGER;
+BEGIN
+    -- Obtener el contador del día
+    SELECT COUNT(*) + 1 INTO contador
+    FROM pedidos 
+    WHERE DATE(fecha_pedido) = fecha_actual;
+    
+    -- Generar número con formato: YYYYMMDD-XXX
+    nuevo_numero := TO_CHAR(fecha_actual, 'YYYYMMDD') || '-' || LPAD(contador::TEXT, 3, '0');
+    
+    RETURN nuevo_numero;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para calcular totales de pedido
+CREATE OR REPLACE FUNCTION calcular_totales_pedido(pedido_id_param INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    nuevo_subtotal DECIMAL(10,2);
+    nuevo_total DECIMAL(10,2);
+    impuesto_rate DECIMAL(5,4) := 0.19; -- 19% IVA
+BEGIN
+    -- Calcular subtotal
+    SELECT COALESCE(SUM(subtotal), 0) INTO nuevo_subtotal
+    FROM detalle_pedidos 
+    WHERE pedido_id = pedido_id_param;
+    
+    -- Calcular impuestos y total
+    UPDATE pedidos 
+    SET 
+        subtotal = nuevo_subtotal,
+        impuestos = nuevo_subtotal * impuesto_rate,
+        total = nuevo_subtotal + (nuevo_subtotal * impuesto_rate) - COALESCE(descuento, 0)
+    WHERE id = pedido_id_param;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para actualizar totales automáticamente
+CREATE OR REPLACE FUNCTION trigger_actualizar_totales_pedido()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        PERFORM calcular_totales_pedido(OLD.pedido_id);
+        RETURN OLD;
+    ELSE
+        PERFORM calcular_totales_pedido(NEW.pedido_id);
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_actualizar_totales_detalle_pedidos
+    AFTER INSERT OR UPDATE OR DELETE ON detalle_pedidos
+    FOR EACH ROW EXECUTE FUNCTION trigger_actualizar_totales_pedido();
+
+-- =====================================================
+-- DATOS INICIALES
+-- =====================================================
+
+-- Insertar categorías básicas
+INSERT INTO categorias (nombre, descripcion) VALUES
+('Comida', 'Platos principales y comidas'),
+('Bebida', 'Bebidas frías y calientes'),
+('Postre', 'Postres y dulces'),
+('Entrada', 'Aperitivos y entradas'),
+('Ensalada', 'Ensaladas variadas');
+
+-- Insertar mesas
+INSERT INTO mesas (numero, capacidad, ubicacion) VALUES
+('Mesa 1', 4, 'Ventana'),
+('Mesa 2', 2, 'Interior'),
+('Mesa 3', 6, 'Terraza'),
+('Mesa 4', 4, 'Interior'),
+('Mesa 5', 2, 'Barra');
+
+-- Insertar productos básicos
+INSERT INTO productos (nombre, precio, categoria_id, descripcion, disponible) VALUES
+('Hamburguesa Clásica', 8500, 1, 'Hamburguesa con carne, lechuga, tomate y queso', true),
+('Pizza Margarita', 12000, 1, 'Pizza con salsa de tomate, mozzarella y albahaca', true),
+('Ensalada César', 7500, 5, 'Lechuga romana, pollo, crutones y aderezo césar', true),
+('Papas Fritas', 3500, 1, 'Papas fritas crujientes con sal', true),
+('Coca Cola', 2500, 2, 'Bebida gaseosa 350ml', true),
+('Agua Mineral', 2000, 2, 'Agua mineral sin gas 500ml', true),
+('Café Americano', 2800, 2, 'Café negro americano', true),
+('Tiramisú', 4500, 3, 'Postre italiano con mascarpone', true);
+
+-- Insertar platos especiales de ejemplo
+INSERT INTO platos_especiales (nombre, precio, descripcion, disponible, fecha_inicio, fecha_fin) VALUES
+('Paella Valenciana', 15000, 'Paella tradicional con mariscos y pollo', true, CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days'),
+('Salmón a la Plancha', 18000, 'Salmón fresco con vegetales de temporada', true, CURRENT_DATE, CURRENT_DATE + INTERVAL '3 days');
+
+-- Insertar configuración básica
+INSERT INTO configuracion (clave, valor, descripcion, tipo) VALUES
+('nombre_restaurante', 'Mi Restaurante', 'Nombre del restaurante', 'string'),
+('direccion', 'Calle Principal 123', 'Dirección del restaurante', 'string'),
+('telefono', '+56 9 1234 5678', 'Teléfono de contacto', 'string'),
+('email', 'info@mirestaurante.cl', 'Email de contacto', 'string'),
+('impuesto_iva', '0.19', 'Porcentaje de IVA', 'number'),
+('moneda', 'CLP', 'Moneda utilizada', 'string'),
+('zona_horaria', 'America/Santiago', 'Zona horaria', 'string');
+
+-- =====================================================
+-- VISTAS ÚTILES
+-- =====================================================
+
+-- Vista de productos con categoría
+CREATE VIEW v_productos_completos AS
+SELECT 
+    p.id,
+    p.nombre,
+    p.precio,
+    c.nombre AS categoria,
+    p.descripcion,
+    p.disponible,
+    p.tiempo_preparacion,
+    p.created_at
+FROM productos p
+JOIN categorias c ON p.categoria_id = c.id;
+
+-- Vista de ventas detalladas
+CREATE VIEW v_ventas_detalladas AS
+SELECT 
+    v.id,
+    v.fecha_venta,
+    v.mesa_numero,
+    v.total,
+    v.cantidad_items,
+    v.metodo_pago,
+    dv.producto_nombre,
+    dv.categoria,
+    dv.cantidad,
+    dv.precio_unitario,
+    dv.subtotal,
+    dv.es_plato_especial
+FROM ventas v
+JOIN detalle_ventas dv ON v.id = dv.venta_id;
+
+-- Vista de pedidos activos
+CREATE VIEW v_pedidos_activos AS
+SELECT 
+    p.id,
+    p.numero_pedido,
+    m.numero AS mesa_numero,
+    p.estado,
+    p.total,
+    p.fecha_pedido,
+    p.observaciones,
+    COUNT(dp.id) AS cantidad_items
+FROM pedidos p
+JOIN mesas m ON p.mesa_id = m.id
+LEFT JOIN detalle_pedidos dp ON p.id = dp.pedido_id
+WHERE p.estado IN ('pendiente', 'preparando', 'listo')
+GROUP BY p.id, m.numero;
+
+-- =====================================================
+-- PROCEDIMIENTOS ALMACENADOS
+-- =====================================================
+
+-- Procedimiento para completar un pedido y registrar venta
+CREATE OR REPLACE FUNCTION completar_pedido(pedido_id_param INTEGER, metodo_pago_param VARCHAR DEFAULT 'efectivo')
+RETURNS VOID AS $$
+DECLARE
+    pedido_record RECORD;
+    venta_id_nueva INTEGER;
+BEGIN
+    -- Obtener información del pedido
+    SELECT p.*, m.numero AS mesa_numero INTO pedido_record
+    FROM pedidos p
+    JOIN mesas m ON p.mesa_id = m.id
+    WHERE p.id = pedido_id_param AND p.estado != 'cancelado';
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Pedido no encontrado o ya cancelado';
+    END IF;
+    
+    -- Actualizar estado del pedido
+    UPDATE pedidos 
+    SET 
+        estado = 'entregado',
+        fecha_completado = CURRENT_TIMESTAMP
+    WHERE id = pedido_id_param;
+    
+    -- Crear registro de venta
+    INSERT INTO ventas (
+        pedido_id, 
+        mesa_numero, 
+        total, 
+        cantidad_items, 
+        metodo_pago
+    ) VALUES (
+        pedido_id_param,
+        pedido_record.mesa_numero,
+        pedido_record.total,
+        (SELECT COUNT(*) FROM detalle_pedidos WHERE pedido_id = pedido_id_param),
+        metodo_pago_param
+    ) RETURNING id INTO venta_id_nueva;
+    
+    -- Insertar detalle de ventas
+    INSERT INTO detalle_ventas (
+        venta_id,
+        producto_nombre,
+        categoria,
+        cantidad,
+        precio_unitario,
+        subtotal,
+        es_plato_especial
+    )
+    SELECT 
+        venta_id_nueva,
+        COALESCE(pr.nombre, pe.nombre),
+        COALESCE(c.nombre, 'Especial'),
+        dp.cantidad,
+        dp.precio_unitario,
+        dp.subtotal,
+        CASE WHEN dp.plato_especial_id IS NOT NULL THEN true ELSE false END
+    FROM detalle_pedidos dp
+    LEFT JOIN productos pr ON dp.producto_id = pr.id
+    LEFT JOIN categorias c ON pr.categoria_id = c.id
+    LEFT JOIN platos_especiales pe ON dp.plato_especial_id = pe.id
+    WHERE dp.pedido_id = pedido_id_param;
+    
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- CONSULTAS DE EJEMPLO PARA REPORTES
+-- =====================================================
+
+-- Ventas por día
+-- SELECT DATE(fecha_venta) as fecha, COUNT(*) as pedidos, SUM(total) as total_ventas
+-- FROM ventas 
+-- WHERE fecha_venta >= CURRENT_DATE - INTERVAL '30 days'
+-- GROUP BY DATE(fecha_venta)
+-- ORDER BY fecha DESC;
+
+-- Productos más vendidos
+-- SELECT 
+--     producto_nombre, 
+--     SUM(cantidad) as total_vendido,
+--     SUM(subtotal) as ingresos_totales
+-- FROM detalle_ventas dv
+-- JOIN ventas v ON dv.venta_id = v.id
+-- WHERE v.fecha_venta >= CURRENT_DATE - INTERVAL '30 days'
+-- GROUP BY producto_nombre
+-- ORDER BY total_vendido DESC;
+
+-- Ventas por mesa
+-- SELECT 
+--     mesa_numero,
+--     COUNT(*) as total_pedidos,
+--     SUM(total) as ingresos_totales,
+--     AVG(total) as ticket_promedio
+-- FROM ventas
+-- WHERE fecha_venta >= CURRENT_DATE - INTERVAL '30 days'
+-- GROUP BY mesa_numero
+-- ORDER BY ingresos_totales DESC;
+
+-- =====================================================
+-- COMENTARIOS FINALES
+-- =====================================================
+
+COMMENT ON DATABASE restaurante_db IS 'Base de datos para aplicación de gestión de restaurante';
+COMMENT ON TABLE productos IS 'Menú regular del restaurante';
+COMMENT ON TABLE platos_especiales IS 'Platos especiales temporales';
+COMMENT ON TABLE pedidos IS 'Pedidos realizados por los clientes';
+COMMENT ON TABLE ventas IS 'Historial de ventas completadas';
+COMMENT ON TABLE detalle_ventas IS 'Detalle de productos vendidos';
+
+-- Mostrar resumen de la base de datos
+SELECT 'Base de datos creada exitosamente' AS mensaje;
+SELECT 'Tablas creadas: ' || COUNT(*) AS resumen FROM information_schema.tables WHERE table_schema = 'public';
