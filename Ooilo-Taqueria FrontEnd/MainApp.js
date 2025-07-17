@@ -17,6 +17,7 @@ import LoginScreen from "./screens/LoginScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import AppHeader from "./components/AppHeader";
 import AppNavigator from "./navigation/AppNavigator";
+import EchoService from "./services/EchoService";
 
 // ✅ COMPONENTE INTERNO CON SAFE AREA
 function MainAppContent() {
@@ -163,13 +164,19 @@ function MainAppContent() {
     if (isLoggedIn && !datosListos) {
       console.log('🚀 Usuario autenticado, cargando datos...');
       cargarDatosDesdeBackend();
+      const token = ApiService.authToken;
+      const restaurantId = user?.restaurant_id || 1;
+      if (token) {
+        EchoService.init(token, restaurantId);
+      }
     }
-  }, [isLoggedIn, datosListos, cargarDatosDesdeBackend]);
+  }, [isLoggedIn, datosListos, cargarDatosDesdeBackend, user]);
 
   // ✅ LIMPIAR DATOS AL CERRAR SESIÓN
   useEffect(() => {
     if (!isLoggedIn) {
       console.log('👋 Sesión cerrada, limpiando datos...');
+      EchoService.disconnect();
       setMenu([]);
       setPedidos([]);
       setPlatosEspeciales([]);
@@ -224,6 +231,7 @@ function MainAppContent() {
         paddingBottom: safeAreaConfig.getBottomPadding(0) 
       }}>
         <AppNavigator
+          userRole={userRole || 'mesero'}
           menu={menu}
           setMenu={setMenu}
           pedidos={pedidos}

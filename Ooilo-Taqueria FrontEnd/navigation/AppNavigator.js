@@ -25,6 +25,7 @@ import GeneradorQR from "../components/GeneradorQR";
 const Tab = createBottomTabNavigator();
 
 export default function AppNavigator({
+  userRole, // 'chef' or 'mesero'
   menu,
   setMenu,
   pedidos,
@@ -75,108 +76,115 @@ export default function AppNavigator({
     };
   };
 
+  const ChefNavigator = () => (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons = {
+            Pedidos: focused ? 'restaurant' : 'restaurant-outline',
+          };
+          return <Ionicons name={icons[route.name]} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#e74c3c',
+        tabBarInactiveTintColor: '#95a5a6',
+        tabBarStyle: getTabBarStyle(),
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
+        tabBarHideOnKeyboard: Platform.OS === 'android',
+      })}
+    >
+      <Tab.Screen
+        name="Pedidos"
+        options={{
+          title: 'Pedidos',
+          tabBarBadge: pedidos?.length > 0 ? pedidos.length : undefined,
+        }}
+      >
+        {(props) => (
+          <Pedidos
+            {...props}
+            menu={menu}
+            pedidos={pedidos}
+            setPedidos={setPedidos}
+            platosEspeciales={platosEspeciales}
+            ventas={ventas}
+            setVentas={setVentas}
+          />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+
+  const WaiterNavigator = () => (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons = {
+            Pedidos: focused ? 'restaurant' : 'restaurant-outline',
+            Menu: focused ? 'book' : 'book-outline',
+          };
+          return <Ionicons name={icons[route.name]} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#e74c3c',
+        tabBarInactiveTintColor: '#95a5a6',
+        tabBarStyle: getTabBarStyle(),
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
+        tabBarHideOnKeyboard: Platform.OS === 'android',
+      })}
+    >
+      <Tab.Screen
+        name="Pedidos"
+        options={{
+          title: 'Pedidos',
+          tabBarBadge: pedidos?.length > 0 ? pedidos.length : undefined,
+        }}
+      >
+        {(props) => (
+          <Pedidos
+            {...props}
+            menu={menu}
+            pedidos={pedidos}
+            setPedidos={setPedidos}
+            platosEspeciales={platosEspeciales}
+            ventas={ventas}
+            setVentas={setVentas}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Menu"
+        options={{
+          title: 'Menú',
+          tabBarBadge: menu?.length > 0 ? menu.length : undefined,
+        }}
+      >
+        {(props) => (
+          <Carta
+            {...props}
+            menu={menu}
+            setMenu={setMenu}
+            nuevoProducto={nuevoProducto}
+            setNuevoProducto={setNuevoProducto}
+            modoEdicion={modoEdicion}
+            setModoEdicion={setModoEdicion}
+            categorias={categorias}
+            setCategorias={setCategorias}
+          />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarIcon: ({ focused, color, size }) => {
-            const icons = {
-              Pedidos: focused ? 'restaurant' : 'restaurant-outline',
-              Menu: focused ? 'book' : 'book-outline',
-              Especiales: focused ? 'star' : 'star-outline',
-              Informes: focused ? 'bar-chart' : 'bar-chart-outline',
-              QR: focused ? 'qr-code' : 'qr-code-outline',
-            };
-            return <Ionicons name={icons[route.name]} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: '#e74c3c',
-          tabBarInactiveTintColor: '#95a5a6',
-          tabBarStyle: getTabBarStyle(),
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
-          },
-          // ✅ CONFIGURACIÓN DE SAFE AREA PARA CADA TAB
-          tabBarHideOnKeyboard: Platform.OS === 'android',
-        })}
-        initialRouteName="Pedidos"
-      >
-        <Tab.Screen 
-          name="Pedidos"
-          options={{
-            title: 'Pedidos',
-            tabBarBadge: pedidos?.length > 0 ? pedidos.length : undefined,
-          }}
-        >
-          {(props) => (
-            <Pedidos
-              {...props}
-              menu={menu}
-              pedidos={pedidos}
-              setPedidos={setPedidos}
-              platosEspeciales={platosEspeciales}
-              ventas={ventas}
-              setVentas={setVentas}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen 
-          name="Menu"
-          options={{
-            title: 'Menú',
-            tabBarBadge: menu?.length > 0 ? menu.length : undefined,
-          }}
-        >
-          {(props) => (
-            <Carta
-              {...props}
-              menu={menu}
-              setMenu={setMenu}
-              nuevoProducto={nuevoProducto}
-              setNuevoProducto={setNuevoProducto}
-              modoEdicion={modoEdicion}
-              setModoEdicion={setModoEdicion}
-              categorias={categorias}
-              setCategorias={setCategorias}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen 
-          name="Especiales"
-          options={{
-            title: 'Especiales',
-            tabBarBadge: platosEspeciales?.length > 0 ? platosEspeciales.length : undefined,
-          }}
-        >
-          {(props) => (
-            <PlatoEspecial
-              {...props}
-              platosEspeciales={platosEspeciales}
-              setPlatosEspeciales={setPlatosEspeciales}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen 
-          name="Informes"
-          options={{
-            title: 'Informes',
-          }}
-        >
-          {(props) => <Informes {...props} ventas={ventas} />}
-        </Tab.Screen>
-
-        <Tab.Screen 
-          name="QR" 
-          component={GeneradorQR}
-          options={{
-            title: 'Código QR',
-          }}
-        />
-      </Tab.Navigator>
+      {userRole === 'chef' ? <ChefNavigator /> : <WaiterNavigator />}
     </NavigationContainer>
   );
 }

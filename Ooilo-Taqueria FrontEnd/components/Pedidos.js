@@ -139,7 +139,21 @@ export default function Pedidos({
   // ✅ CARGAR CATEGORÍAS AL INICIAR
   useEffect(() => {
     cargarCategoriasDesdeDB();
-  }, [cargarCategoriasDesdeDB]);
+
+    const handleOrderCreated = (event) => {
+      const newOrder = event.detail;
+      setPedidos((prev) => {
+        const mesaPedidos = prev[newOrder.mesa] || [];
+        return { ...prev, [newOrder.mesa]: [...mesaPedidos, newOrder] };
+      });
+    };
+
+    window.addEventListener('order-created', handleOrderCreated);
+
+    return () => {
+      window.removeEventListener('order-created', handleOrderCreated);
+    };
+  }, [cargarCategoriasDesdeDB, setPedidos]);
 
   // DEBUG Y VERIFICACION SEGURA DE DATOS
   useEffect(() => {

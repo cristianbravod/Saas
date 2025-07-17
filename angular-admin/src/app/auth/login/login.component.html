@@ -1,0 +1,21 @@
+<div class="login-container">
+  <h2>Login</h2>
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" formControlName="email">
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" formControlName="password">
+    </div>
+    <div class="form-group">
+      <label for="restaurant_id">Restaurant ID</label>
+      <input type="number" id="restaurant_id" formControlName="restaurant_id">
+    </div>
+    <button type="submit" [disabled]="!loginForm.valid">Login</button>
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+  </form>
+</div>

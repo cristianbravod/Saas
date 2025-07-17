@@ -4,24 +4,8 @@ import { Platform } from 'react-native';
 
 class ApiService {
   constructor() {
-    // ✅ CONFIGURACIÓN CORREGIDA PARA IPs DIRECTAS
-    this.BASE_URLS = [
-      'http://200.54.216.197:3000/api',    // ✅ IP pública principal
-      'http://200.54.216.197:3000/api',        // ✅ IP local para desarrollo
-      'http://localhost:3000/api',         // ✅ Fallback localhost
-    ];
-    
-    this.currentUrlIndex = 0;
-    this.API_BASE_URL = this.BASE_URLS[0]; // Comenzar con IP pública
-    
-    // ✅ VERIFICACIÓN CRÍTICA
-    if (!this.API_BASE_URL || this.API_BASE_URL === 'undefined') {
-      console.error('❌ CRITICAL: API_BASE_URL is undefined');
-      this.API_BASE_URL = 'http://200.54.216.197:3000/api'; // Fallback forzado
-    }
-    
+    this.API_BASE_URL = 'http://localhost:8000/api';
     console.log('🌐 ApiService inicializado:', this.API_BASE_URL);
-    console.log('📋 URLs disponibles:', this.BASE_URLS);
     console.log('📱 Platform:', Platform.OS);
     
     // ✅ CONFIGURACIÓN ESPECÍFICA
@@ -266,45 +250,23 @@ class ApiService {
   // MÉTODOS DE AUTENTICACIÓN
   // ==========================================
   
-  async login(email, password) {
+  async login(email, password, restaurantId) {
     try {
       console.log('🔐 Iniciando sesión...', email);
       const response = await this.request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, restaurant_id: restaurantId })
       });
-      
+
       if (response.token) {
         this.authToken = response.token;
-        this.tokenExpiry = Date.now() + (response.expiresIn || 86400000);
         await AsyncStorage.setItem('authToken', response.token);
         console.log('✅ Login exitoso - Token guardado');
       }
-      
+
       return response;
     } catch (error) {
       console.error('❌ Error en login:', error.message);
-      
-      // EN DESARROLLO: crear un token dummy para bypasear autenticación
-      if (__DEV__) {
-        console.log('🔧 DEV MODE: Creando token dummy...');
-        this.authToken = 'dev-token-' + Date.now();
-        this.tokenExpiry = Date.now() + 86400000;
-        await AsyncStorage.setItem('authToken', this.authToken);
-        
-        return {
-          success: true,
-          token: this.authToken,
-          user: {
-            id: 1,
-            nombre: 'Usuario Dev',
-            email: email,
-            rol: 'admin'
-          },
-          message: 'Login en modo desarrollo'
-        };
-      }
-      
       throw error;
     }
   }
