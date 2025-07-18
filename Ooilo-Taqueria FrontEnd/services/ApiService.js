@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 class ApiService {
   constructor() {
-    this.API_BASE_URL = 'http://localhost:8000/api';
+    this.API_BASE_URL = 'http://192.170.1.12:8000/api';
     console.log('🌐 ApiService inicializado:', this.API_BASE_URL);
     console.log('📱 Platform:', Platform.OS);
     
