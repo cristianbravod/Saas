@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 class ApiService {
   constructor() {
-    this.API_BASE_URL = 'http://192.170.1.12/api';
+    this.API_BASE_URL = 'http://192.170.1.12/saas-backend/public/index.php/api';
     console.log('🌐 ApiService inicializado:', this.API_BASE_URL);
     console.log('📱 Platform:', Platform.OS);
     
@@ -178,6 +178,7 @@ class ApiService {
 
   async makeRequestWithTimeout(endpoint, options = {}, timeout = this.TIMEOUTS.NORMAL_REQUEST) {
     const url = `${this.API_BASE_URL}${endpoint}`;
+    console.log('🔗 Full request URL:', url); // Log the full URL
     
     const requestOptions = {
       method: options.method || 'GET',
@@ -227,6 +228,7 @@ class ApiService {
     this.serverState.isWarm = false;
     
     console.log(`🔄 Intento de recuperación para: ${endpoint}`);
+    console.error('🔥 Request error details:', error);
     
     if (this.currentUrlIndex < this.BASE_URLS.length - 1) {
       this.currentUrlIndex++;
