@@ -1,0 +1,30 @@
+<div class="container">
+  <h2>{{ isEditMode ? 'Editar' : 'Nuevo' }} Usuario</h2>
+  <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+    <div class="form-group">
+      <label for="name">Nombre</label>
+      <input type="text" id="name" formControlName="name" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" formControlName="email" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" formControlName="password" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="password_confirmation">Confirmar Contraseña</label>
+      <input type="password" id="password_confirmation" formControlName="password_confirmation" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="role">Rol</label>
+      <select id="role" formControlName="role" class="form-control">
+        <option value="admin">Admin</option>
+        <option value="chef">Chef</option>
+        <option value="mesero">Mesero</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+  </form>
+</div>

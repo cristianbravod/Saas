@@ -11,7 +11,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   orders: any[] = [];
   private orderSubscription: Subscription;
 
-  constructor(private echoService: EchoService) { }
+  constructor(private echoService: EchoService) {
+    this.orderSubscription = new Subscription();
+  }
 
   ngOnInit(): void {
     this.orderSubscription = this.echoService.orderCreated.subscribe(order => {

@@ -20,6 +20,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\SpecialDishController;
+use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,6 +80,12 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('/categorias', CategoryController::class)->except(['index', 'show']);
             Route::apiResource('/platos-especiales', SpecialDishController::class)->except(['index', 'show']);
             Route::apiResource('/mesas', TableController::class);
+            Route::apiResource('/users', UserController::class);
+        });
+
+        // Superadmin only routes
+        Route::middleware('can:superadmin')->group(function() {
+            Route::apiResource('/restaurants', RestaurantController::class);
         });
     });
 });

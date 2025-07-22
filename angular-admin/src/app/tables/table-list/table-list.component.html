@@ -1,0 +1,26 @@
+<div class="container">
+  <h2>Mesas</h2>
+  <a routerLink="/tables/new" class="btn btn-primary">Nueva Mesa</a>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Capacidad</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let table of tables">
+        <td>{{ table.id }}</td>
+        <td>{{ table.name }}</td>
+        <td>{{ table.capacity }}</td>
+        <td>{{ table.status }}</td>
+        <td>
+          <a [routerLink]="['/tables/edit', table.id]" class="btn btn-secondary">Editar</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

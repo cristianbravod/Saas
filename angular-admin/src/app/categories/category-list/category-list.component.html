@@ -1,0 +1,24 @@
+<div class="container">
+  <h2>Categorías</h2>
+  <a routerLink="/categories/new" class="btn btn-primary">Nueva Categoría</a>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Activa</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let category of categories">
+        <td>{{ category.id }}</td>
+        <td>{{ category.name }}</td>
+        <td>{{ category.active ? 'Sí' : 'No' }}</td>
+        <td>
+          <a [routerLink]="['/categories/edit', category.id]" class="btn btn-secondary">Editar</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,24 @@
+<div class="container">
+  <h2>Restaurantes</h2>
+  <a routerLink="/restaurants/new" class="btn btn-primary">Nuevo Restaurante</a>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Slug</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let restaurant of restaurants">
+        <td>{{ restaurant.id }}</td>
+        <td>{{ restaurant.name }}</td>
+        <td>{{ restaurant.slug }}</td>
+        <td>
+          <a [routerLink]="['/restaurants/edit', restaurant.id]" class="btn btn-secondary">Editar</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

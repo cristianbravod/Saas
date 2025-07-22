@@ -19,6 +19,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Category' => 'App\Policies\CategoryPolicy',
         'App\Models\SpecialDish' => 'App\Policies\SpecialDishPolicy',
         'App\Models\Table' => 'App\Policies\TablePolicy',
+        'App\Models\User' => 'App\Policies\UserPolicy',
     ];
 
     /**
@@ -30,8 +31,12 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        Gate::define('superadmin', function (User $user) {
+            return $user->role === 'superadmin';
+        });
+
         Gate::define('admin', function (User $user) {
-            return $user->role === 'admin';
+            return in_array($user->role, ['superadmin', 'admin']);
         });
 
         Gate::define('chef', function (User $user) {

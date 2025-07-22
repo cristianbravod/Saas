@@ -39,14 +39,14 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'restaurant_id' => 'required|exists:restaurants,id',
-            'role' => 'required|in:admin,chef,mesero'
+            'role' => 'required|in:admin,chef,mesero,superadmin'
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'restaurant_id' => $request->restaurant_id,
+            'restaurant_id' => $request->role === 'superadmin' ? null : $request->restaurant_id,
             'role' => $request->role,
         ]);
 
