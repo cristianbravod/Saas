@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class EchoService {
-  echo: Echo;
+  echo: Echo | null = null;
   orderCreated = new Subject<any>();
 
   constructor(private authService: AuthService) { }

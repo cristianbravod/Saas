@@ -3,10 +3,15 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TableService } from '../../services/table.service';
 
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule } from '@angular/forms';
+
 @Component({
   selector: 'app-table-form',
   templateUrl: './table-form.component.html',
-  styleUrls: ['./table-form.component.css']
+  styleUrls: ['./table-form.component.css'],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule]
 })
 export class TableFormComponent implements OnInit {
   tableForm: FormGroup;
